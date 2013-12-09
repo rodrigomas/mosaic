@@ -14,6 +14,7 @@ namespace Mosaic
 
         public static Image ByteToImage(byte[] imageBytes)
         {
+            if (imageBytes == null) return null;
             MemoryStream ms = new MemoryStream(imageBytes);
 
             Image returnImage = Image.FromStream(ms);

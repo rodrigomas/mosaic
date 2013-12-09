@@ -9,12 +9,13 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using OpenTK.Graphics.OpenGL;
+using OpenTK;
+using System.Drawing.Imaging;
 
 namespace Mosaic
 {
     public partial class MainForm : Form
     {
-
         class ItemData
         {
             public DateTime CreatedTime { get; set; }
@@ -38,6 +39,10 @@ namespace Mosaic
             public float Time;
             public float Alpha;
             public float Blend;
+
+            public Image Img { get; set; }
+
+            public Texture Tex { get; set; }
         }
 
 
@@ -76,9 +81,164 @@ namespace Mosaic
             InitializeComponent();
         }
 
+        private float H0;
+
+        private int CurrentIdx = 0;
+        private int CurrentFrame = 0;
+
+        private bool Rendering = false;
+
+        private RenderTarget _Target = null;
+
         private void Renderer_Paint(object sender, PaintEventArgs e)
         {
-            double cnt = (DateTime.Now - Start).TotalMilliseconds;
+            int w = 640;
+            int h = 480;
+
+            Renderer.MakeCurrent();
+
+            GL.ClearColor(Color.Black);
+            GL.Enable(EnableCap.DepthTest);
+            GL.Hint(HintTarget.LineSmoothHint, HintMode.Nicest);
+            GL.BlendFunc(BlendingFactorSrc.SrcAlpha, BlendingFactorDest.OneMinusSrcAlpha);
+
+            GL.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit);
+
+            GL.PointSize(10);
+          //  GL.PushAttrib(AttribMask.EnableBit);
+
+            //GL.Disable(EnableCap.DepthTest);
+            //GL.Enable(EnableCap.AlphaTest);
+            //GL.Enable(EnableCap.Blend);
+            GL.Disable(EnableCap.DepthTest);
+
+            GL.MatrixMode(MatrixMode.Projection);
+            GL.LoadIdentity();
+
+            float aspect = w / (float)(h);            
+
+            Matrix4 Perspective = Matrix4.CreatePerspectiveFieldOfView((float)(Math.PI / 4), aspect, 1f, 1000.0f);
+            GL.LoadMatrix(ref Perspective);
+            
+            double pw = 2 * 1.0f * Math.Tan(Math.PI / 8);
+
+            float H = 200;
+
+            float W = H / 1.0f * ((float)pw);
+
+            //GL.Frustum(0, w, 0, h, -1, 10000);
+            //GL.Ortho(0, w, 0, h, -1, 100);
+
+            GL.Viewport(0, 0, w, h);            
+
+            GL.MatrixMode(MatrixMode.Modelview);
+
+            GL.LoadIdentity();
+
+            GL.Enable(EnableCap.Texture2D);
+
+            //Matrix4 LookAt = Matrix4.LookAt(frame.Position.X, frame.Position.Y, frame.Position.Z, frame.Position.X, frame.Position.Y + 1.0f, frame.Position.Z, 0, 0, 1);
+            Matrix4 LookAt = Matrix4.LookAt(0, 0, -H * 640 / W, 0, 0, 0, 0, 1, 0);
+
+            GL.LoadMatrix(ref LookAt);
+
+            GL.ActiveTexture(TextureUnit.Texture0);            
+
+            GL.Disable(EnableCap.Texture2D);
+            GL.Color4(Color.Red);
+            GL.Begin(PrimitiveType.Points);
+            GL.Vertex3(0, 0, 0);
+            GL.End();
+            //GL.Scale(W / 640, W * aspect / 480, 1);
+            GL.Translate(-w / 2.0f, -h / 2.0f, 0);
+           //
+            if (_DisplayImages.Count != 0)
+            {
+                Bitmap bmp = (_DisplayImages[0].Img as Bitmap);                
+
+                BitmapData BmpData = bmp.LockBits(new Rectangle(0, 0, bmp.Width, bmp.Height), ImageLockMode.ReadOnly, bmp.PixelFormat);
+                unsafe
+                {
+                    byte* p = (byte*)BmpData.Scan0.ToPointer();
+
+                    for (int i = 0; i < bmp.Width; i++)
+                    {
+                        for (int j = 0; j < bmp.Height; j++)
+                        {
+                            byte* cp = p + j * BmpData.Stride + 4 * i;
+
+                            Color c = Color.FromArgb(cp[2], cp[1], cp[0]);
+
+                           // Color c = bmp.GetPixel(i, j);
+
+                            //ItemData IT = seq.ImageArray[x, y];
+
+                            /*if (IT.FileName != "NO_IMAGE")
+                            {
+                                IT.Img = Image.FromFile(IT.FileName);
+
+                                //IT.Frames = FillFrames(IT.FileName, IT.Cnt);
+                            }
+
+                            IT.Tex = Texture.LoadTexture(IT.Img as Bitmap, true, false, true);
+
+                            //  IT.color = Utils.GetColorMap(IT.Img as Bitmap); 
+
+                            if (IT.Cnt > 1)
+                            {
+                                IT.Tex.UpdateTexture(IT.Frames[CurrentFrame % IT.Cnt] as Bitmap, true, true);
+                            }
+
+                            IT.Tex.SetCurrent();*/
+
+                            GL.Color4(c);
+
+                            GL.PushMatrix();
+
+                           // GL.Translate(i, j * aspect, 0);
+                            GL.Translate(i, j, 0);
+                            GL.Begin(PrimitiveType.Points);
+
+                            GL.TexCoord2(0, 0);
+                            GL.Vertex2(0, 0);
+
+                            /*L.Begin(PrimitiveType.Quads);
+
+                            GL.TexCoord2(0, 0);
+                            GL.Vertex2(0, 0);
+
+                            GL.TexCoord2(1, 0);
+                            GL.Vertex2(1, 0);
+
+                            GL.TexCoord2(1, 1);
+                            GL.Vertex2(1, 1);
+
+                            GL.TexCoord2(0, 1);
+                            GL.Vertex2(0, 1);
+*/
+                            GL.End();
+
+                            GL.PopMatrix();
+
+
+                            //if (IT.FileName != "NO_IMAGE")
+                            //{
+                            //    IT.Img.Dispose();
+                            //    DisposeAll(IT.Frames);
+                            //}
+
+                            //IT.Tex.Dispose();
+                        }
+                    }
+                }
+
+                bmp.UnlockBits(BmpData);
+            }
+
+            Renderer.SwapBuffers();
+
+
+            /*double cnt = (DateTime.Now - Start).TotalMilliseconds;
 
             double delta = (DateTime.Now - Delta).TotalMilliseconds;
 
@@ -87,6 +247,11 @@ namespace Mosaic
             if (!GLContextLoaded) return;
 
             Renderer.MakeCurrent();
+
+            if (Rendering && CurrentIdx < _Animations.Count && CurrentFrame < _Animations[CurrentIdx].Frames.Count)
+            {
+                LastImage = _Animations[CurrentIdx].Frames[CurrentFrame].Tex;
+            }
 
             GL.ClearColor(Color.Black);
             GL.Enable(EnableCap.DepthTest);
@@ -100,141 +265,51 @@ namespace Mosaic
             GL.Disable(EnableCap.DepthTest);
             GL.Enable(EnableCap.AlphaTest);
             GL.Enable(EnableCap.Blend);
-
+            GL.Disable(EnableCap.DepthTest);           
+           
+            
             GL.MatrixMode(MatrixMode.Projection);
-
-            GL.PushMatrix();
-
             GL.LoadIdentity();
-
             GL.Ortho(0, Renderer.Width, 0, Renderer.Height, -1, 1);
-
             GL.Viewport(0, 0, Renderer.Width, Renderer.Height);
-
+                
             GL.MatrixMode(MatrixMode.Modelview);
-
-            GL.PushMatrix();
-
             GL.LoadIdentity();
 
-            GL.Disable(EnableCap.DepthTest);
+            GL.Disable(EnableCap.Texture2D);
+
             GL.Enable(EnableCap.Texture2D);
-
-            double basefactor = 1.0f;
-
-            TransitionOffset += delta;
-
-            double factor = (TransitionOffset) / TransitionTime + 0.1;
+            GL.ActiveTexture(TextureUnit.Texture0);
 
             if (LastImage != null)
             {
-                GL.ActiveTexture(TextureUnit.Texture0);
-
                 LastImage.SetCurrent();
-
-                if (LastImage.Width > LastImage.Height)
-                {
-                    if (Width < LastImage.Width)
-                    {
-                        basefactor = Width / (float)LastImage.Width;
-                    }
-                    else if (Height < LastImage.Height)
-                    {
-                        basefactor = Height / (float)LastImage.Height;
-                    }
-                }
-                else
-                {
-                    if (Height < LastImage.Height)
-                    {
-                        basefactor = Height / (float)LastImage.Height;
-
-                    }
-                    else if (Width < LastImage.Width)
-                    {
-                        basefactor = Width / (float)LastImage.Width;
-                    }
-                }
-
-                {
-                    GL.Color4(1.0f, 1.0f, 1.0f, 1.0f - factor);
-
-                    factor = factor * basefactor;
-
-                    GL.PushMatrix();
-
-                    GL.Translate(-LastImage.Width * basefactor * 0.5, -LastImage.Height * basefactor * 0.5, 0);
-
-//                    GL.Translate((Width - LastImage.Width * basefactor) / 2.0 + P0.X, (Height - LastImage.Height * basefactor) / 2.0 + P0.Y, 0);
-
-                    GL.Scale(factor, factor, factor);
-
-                    GL.Begin(BeginMode.Quads);
-
-                    GL.TexCoord2(0, 0);
-                    GL.Vertex2(0, 0);
-
-                    GL.TexCoord2(1, 0);
-                    GL.Vertex2(0 + LastImage.Width, 0);
-
-                    GL.TexCoord2(1, 1);
-                    GL.Vertex2(LastImage.Width, LastImage.Height);
-
-                    GL.TexCoord2(0, 1);
-                    GL.Vertex2(0, LastImage.Height);
-
-                    GL.End();
-
-                    GL.PopMatrix();
-                }
-
-                //if (Math.Abs(TransitionOffset) > TransitionTime)
-                //{
-                //    CurrentID = (CurrentID + 1) % _DisplayImages.Count;
-
-                //    Image img = _DisplayImages[CurrentID].Img;
-
-                //    LastImage.UpdateTexture(img as Bitmap, false, true);
-
-                //    TransitionOffset = 0;
-
-                //    P0.X = Rand.Next(Width / 4);
-                //    P0.Y = Rand.Next(Height / 4);
-
-                //    //if (TransitionOffset > 0)
-                //    //{
-
-                //    //}
-                //    //else
-                //    //{
-
-                //    //}
-                //}
             }
-            //else
-            //{
-            //    if (_DisplayImages.Count != 0)
-            //    {
-            //        CurrentID = 0;
 
-            //        Image img = _DisplayImages[CurrentID].Img;
+            GL.Color4(1.0f, 1.0f, 1.0f, 1.0f);
 
-            //        LastImage = Texture.LoadTexture(img as Bitmap, true, false, true);
-            //    }
-            //}
+            GL.PushMatrix();
 
-            ///            
-            Renderer.SwapBuffers();
+            GL.Begin(PrimitiveType.Quads);
 
-            //if ((DateTime.Now - Reset).TotalMinutes > 20)
-            //{
-            //    Reset = DateTime.Now;
+            GL.TexCoord2(0, 0);
+            GL.Vertex2(0, 0);
 
-            //    if (_DisplayImages.Count > 30)
-            //    {
-            //        Clean();
-            //    }
-            //}
+            GL.TexCoord2(1, 0);
+            GL.Vertex2(0 + _Target.Width, 0);
+
+            GL.TexCoord2(1, 1);
+            GL.Vertex2(_Target.Width, _Target.Height);
+
+            GL.TexCoord2(0, 1);
+            GL.Vertex2(0, _Target.Height);
+
+            GL.End();
+
+            GL.PopMatrix();
+            GL.PopAttrib();
+
+            Renderer.SwapBuffers();*/
         }
 
         private void Clean()
@@ -252,6 +327,9 @@ namespace Mosaic
         {
             Renderer.Context.LoadAll();
             GLContextLoaded = true;
+            Renderer.MakeCurrent();
+
+            _Target = new RenderTarget((int)renderWidth.Value, (int)renderHeight.Value, true);
         }
 
         private void MainTimer_Tick(object sender, EventArgs e)
@@ -269,6 +347,8 @@ namespace Mosaic
 
                 dt.Img.Dispose();
                 dt.Tex.Dispose();
+
+                ImgList.Images.RemoveByKey(dt.FileName);
 
                 _DisplayImages.Remove(dt);
                 ListImage.Items.Remove(ListImage.SelectedItems[0]);
@@ -342,15 +422,29 @@ namespace Mosaic
 
                 if (dialog.ShowDialog() == System.Windows.Forms.DialogResult.OK)
                 {
+                    if (ImgList.Images.ContainsKey(dialog.FileName))
+                        return;
+
                     ListViewItem it = ListImage.Items.Add(Path.GetFileName(dialog.FileName));
+
+                    Bitmap bmp = Image.FromFile(dialog.FileName) as Bitmap;
+
+                    if (bmp.Width != (int)renderWidth.Value || bmp.Height != (int)renderHeight.Value)
+                    {
+                        bmp = Rescale(bmp, (int)renderWidth.Value, (int)renderHeight.Value);
+                    }
 
                     ItemData data = new ItemData()
                     {
                         FileName = dialog.FileName,
                         CreatedTime = DateTime.UtcNow,
-                        Img = Image.FromFile(dialog.FileName),
+                        Img = bmp,
                         Tex = null
                     };
+
+                    ImgList.Images.Add(data.FileName, bmp.GetThumbnailImage(ImgList.ImageSize.Width, ImgList.ImageSize.Height, null, IntPtr.Zero));
+
+                    it.ImageKey = data.FileName;                 
 
                     data.Tex = Texture.LoadTexture(data.Img as Bitmap, true, false, true);
 
@@ -363,37 +457,135 @@ namespace Mosaic
             }
         }
 
+        private Bitmap Rescale(Bitmap bmp, int w, int h)
+        {
+            Bitmap bmp2 = new Bitmap(w,h);
+
+            using (Graphics g = Graphics.FromImage(bmp2))
+            {
+                g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.HighQuality;
+                g.DrawImage(bmp, 0, 0, w, h);
+            }
+
+            return bmp2;
+        }
+
+        private bool VideoRead = false;
+
         private void CreateDB_Click(object sender, EventArgs e)
         {
             using (FolderBrowserDialog dialog = new FolderBrowserDialog())
             {
                 if (dialog.ShowDialog() == System.Windows.Forms.DialogResult.OK)
                 {
+                    VideoRead = chkVideo.Checked;
+
                     String Folderf = dialog.SelectedPath;
 
-                    DirectoryInfo Info = new DirectoryInfo(Folderf);
+                    ProgressDialog pb = new ProgressDialog();
 
-                    foreach (FileInfo file in Info.GetFiles("*.jpg"))
-                    {
-                        String SHA1 = "";
-                        using( Stream st = file.OpenRead())
+                    String dbName = DBSet.Text;
+                    bool Recursive = chkRecursive.Checked;
+
+                    BackgroundWorker worker = new BackgroundWorker() { WorkerReportsProgress = true };
+
+                    worker.ProgressChanged += (s, ev) =>
                         {
-                            SHA1 = Utils.GetSHA1Hash(st);
-                        }
+                            if(pb.Visible == false)
+                                pb.Show();
 
-                        Color color;
+                            pb.Progress.Value = Math.Min(100, ev.ProgressPercentage);
+                            pb.Text = ev.UserState.ToString();
+                            pb.ProgressLabel.Text = ev.UserState.ToString();
+                        };
 
-                        Color center;
-
-                        using(Image bmp = Image.FromFile(file.FullName))
+                    worker.RunWorkerCompleted += (s, r) =>
                         {
-                            color = Utils.GetColorMap(bmp as Bitmap);
+                            pb.Dispose();
+                            worker.Dispose();
 
-                            center = (bmp as Bitmap).GetPixel(bmp.Width / 2, bmp.Height / 2);
+                            MainForm_Load(s, r);
+                        };
 
-                            SaveInDB(file, SHA1, color, center, Utils.ImageToByte(bmp), DBSet.Text);
-                        }                        
-                    }                   
+                    worker.DoWork += (s, ev) =>
+                        {
+                            worker.ReportProgress(0, "Computing files...");
+
+                            Queue<DirectoryInfo> Dirs = new Queue<DirectoryInfo>();
+
+                            int cnt = 0;
+
+                            DirectoryInfo Info = new DirectoryInfo(Folderf);
+
+                            Dirs.Enqueue(Info);
+
+                            while (Dirs.Count != 0)
+                            {
+                                DirectoryInfo dir = Dirs.Dequeue();
+
+                                if (Recursive)
+                                {
+                                    foreach (DirectoryInfo dir2 in dir.GetDirectories())
+                                    {
+                                        Dirs.Enqueue(dir2);
+                                    }
+                                }
+
+                                cnt += dir.GetFiles("*.jpg").Length;
+                            }
+
+                            if(cnt == 0) return;
+
+                            int worked = 0;
+
+                            worker.ReportProgress(0, String.Format("Processing {0} Files ...", cnt));
+
+                            Dirs.Clear();
+                            Dirs.Enqueue(Info);
+                            while (Dirs.Count != 0)
+                            {
+                                DirectoryInfo dir = Dirs.Dequeue();
+
+                                if (Recursive)
+                                {
+                                    foreach (DirectoryInfo dir2 in dir.GetDirectories())
+                                    {
+                                        Dirs.Enqueue(dir2);
+                                    }
+                                }
+
+                                foreach (FileInfo file in dir.GetFiles("*.jpg"))
+                                {
+                                    int pr = (int)( (worked * 100.0) / cnt);
+
+                                    worker.ReportProgress(pr, String.Format("Processing {1}/{0} ({2}%) - {3}", cnt, worked, pr, file.Name));
+
+                                    String SHA1 = "";
+                                    using (Stream st = file.OpenRead())
+                                    {
+                                        SHA1 = Utils.GetSHA1Hash(st);
+                                    }
+
+                                    Color color;
+
+                                    Color center;
+
+                                    using (Image bmp = Image.FromFile(file.FullName))
+                                    {
+                                        color = Utils.GetColorMap(bmp as Bitmap);
+
+                                        center = (bmp as Bitmap).GetPixel(bmp.Width / 2, bmp.Height / 2);
+
+                                        SaveInDB(file, SHA1, color, center, Utils.ImageToByte(bmp), dbName);
+                                    }
+
+                                    worked++;                                    
+                                }    
+                                
+                            }                                           
+                        };                    
+
+                    worker.RunWorkerAsync();
                 }
             }
         }
@@ -405,6 +597,11 @@ namespace Mosaic
             String FileNameExt = Path.GetExtension(fullName);
 
             int cnt = 1;
+
+            if (!VideoRead)
+            {
+                return (File.Exists(fullName)) ? 1 : 0;
+            }
 
             int lastIndex = FileNameNoExt.Length - 1;
             for (int i = lastIndex; i >= 1; i--)
@@ -422,14 +619,18 @@ namespace Mosaic
 
             String FilePathDigits = Path.Combine(FileDir, FileDigits);
 
-            string [] files = System.IO.Directory.GetFiles(FilePathDigits + "*");
+            string[] files = System.IO.Directory.GetFiles(FileDir);
 
             int start = -1;
             int end = -1;
 
             for (int i = 0; i < files.Length; i++)
             {
+                if (Path.GetExtension(files[i]) != ".jpg") continue;
+                
                 String fName = Path.GetFileNameWithoutExtension(files[i]);
+
+                if (!fName.StartsWith(FileDigits)) continue;
 
                 if (fName.Length < FileDigits.Length) continue;
 
@@ -495,13 +696,17 @@ namespace Mosaic
 
             String FilePathDigits = Path.Combine(FileDir, FileDigits);
 
-            string[] files = System.IO.Directory.GetFiles(FilePathDigits + "*");
+            string[] files = System.IO.Directory.GetFiles(FileDir);
 
             SortedList<int, Image> Files = new SortedList<int, Image>();
 
             for (int i = 0; i < files.Length && i < cnt; i++)
             {
+                if (Path.GetExtension(files[i]) != ".jpg") continue;
+
                 String fName = Path.GetFileNameWithoutExtension(files[i]);
+
+                if (!fName.StartsWith(FileDigits)) continue;
 
                 if (fName.Length < FileDigits.Length) continue;
 
@@ -524,9 +729,18 @@ namespace Mosaic
 
             float rate = float.Parse(FrameRate.Text.Replace(',', '.'), Info);
 
+            String dbName = DBSet.Text;
+
+            int ImageDuration = (int)ImgDuration.Value;
+
+            int w = (int)renderWidth.Value;
+            int h = (int)renderHeight.Value;
+
             using (DBManager manager = new DBManager())
             {
                 Random Rnd = new Random();
+
+                manager.ResetImages();
 
                 _Animations.Clear();
 
@@ -549,61 +763,116 @@ namespace Mosaic
 
                     List<PointF> CanPositions = new List<PointF>();
 
-                    for (int i = 0; i < bmp.Width; i++)
-                    {
-                        for (int j = 0; j < bmp.Height; j++)
-                        {
-                            Color c = bmp.GetPixel(i, j);
+                    BitmapData BmpData = bmp.LockBits(new Rectangle(0, 0, bmp.Width, bmp.Height), ImageLockMode.ReadOnly, System.Drawing.Imaging.PixelFormat.Format24bppRgb);
 
-                            if (c.R == color.R && c.G == color.G && c.B == color.B)
+                    unsafe
+                    {
+                        byte* p = (byte*)BmpData.Scan0.ToPointer();
+
+                        for (int i = 0; i < bmp.Width; i++)
+                        {
+                            for (int j = 0; j < bmp.Height; j++)
                             {
-                                CanPositions.Add(new PointF(i, j));
+                                byte* cp = p + j * BmpData.Stride + 3 * i;
+
+                                Color c = Color.FromArgb(cp[0], cp[1], cp[2]);
+
+                                float dr = (c.R - color.R) / 255.0f;
+                                float dg = (c.G - color.G) / 255.0f;
+                                float db = (c.B - color.B) / 255.0f;
+
+                                double d = Math.Sqrt(dr * dr + dg * dg + db * db);
+
+                                if (d < 0.12)
+                                {
+                                    CanPositions.Add(new PointF(i, j));
+                                }
                             }
                         }
                     }
+
+                    bmp.UnlockBits(BmpData);
 
                     PointF pos = CanPositions[Rnd.Next(CanPositions.Count)];
                     seq.TargetPosition = pos;
                     seq.ImageArray[(int)pos.X, (int)pos.Y] = _DisplayImages[s + 1];
 
-                    // Choosing Images
-                    for (int i = 0; i < bmp.Width; i++)
+                    BmpData = bmp.LockBits(new Rectangle(0, 0, bmp.Width, bmp.Height), ImageLockMode.ReadOnly, System.Drawing.Imaging.PixelFormat.Format24bppRgb);
+
+                    ItemData nullitem = new ItemData()
+                                    {
+                                        FileName = "NO_IMAGE",
+                                        CreatedTime = DateTime.UtcNow,
+                                        Img = Properties.Resources.NO_IMAGE,
+                                        Tex = null,
+                                        Cnt = 1,
+                                        Frames = null
+                                    };
+
+                    unsafe
                     {
-                        for (int j = 0; j < bmp.Height; j++)
+                        byte* p = (byte*)BmpData.Scan0.ToPointer();
+
+                        // Choosing Images
+                        for (int i = 0; i < bmp.Width; i++)
                         {
-                            if (i == (int)pos.X && j == (int)pos.Y) continue;
-
-                            Color c = bmp.GetPixel(i, j);
-
-                            String FileName = "";
-
-                            int cnt = 0;
-
-                            Image img = manager.GetImage(DBSet.Text, c, 0.01, out FileName, out cnt);
-
-                            ItemData data = new ItemData()
+                            for (int j = 0; j < bmp.Height; j++)
                             {
-                                FileName = FileName,
-                                CreatedTime = DateTime.UtcNow,
-                                Img = Image.FromFile(FileName),
-                                Tex = null,
-                                Cnt = cnt,
-                                Frames = null
-                            };
+                                if (i == (int)pos.X && j == (int)pos.Y) continue;
 
-                            data.Tex = Texture.LoadTexture(data.Img as Bitmap, true, false, true);
+                                //Color c = bmp.GetPixel(i, j);
+                                byte* cp = p + j * BmpData.Stride + 3 * i;
 
-                            data.color = Utils.GetColorMap(data.Img as Bitmap);
+                                Color c = Color.FromArgb(cp[0], cp[1], cp[2]);
 
-                            data.Frames = FillFrames(FileName, cnt);
+                                String FileName = "";
 
-                            seq.ImageArray[i, j] = data;
+                                int cnt = 0;
+
+                                ItemData data = null;
+
+                               // Image img = manager.GetImage(dbName, c, 0.15, out FileName, out cnt);
+
+                                if (String.IsNullOrEmpty(FileName))
+                                {
+                                    data = nullitem;
+                                }
+                                else
+                                {
+                                   // Bitmap idf = Image.FromFile(FileName) as Bitmap;
+
+                                  //  Image LImage = (idf).GetThumbnailImage(w, h, null, IntPtr.Zero);
+
+                                    data = new ItemData()
+                                    {
+                                        FileName = FileName,
+                                        CreatedTime = DateTime.UtcNow,
+                                        Img = null,
+                                        Tex = null,
+                                        Cnt = cnt,
+                                        Frames = null
+                                    };
+
+                                  //  idf.Dispose();
+
+                                    //data.Frames = FillFrames(FileName, cnt);
+                                }                                
+
+                             //   data.Tex = Texture.LoadTexture(data.Img as Bitmap, true, false, true);
+
+                              //  data.color = Utils.GetColorMap(data.Img as Bitmap);                                
+
+                                seq.ImageArray[i, j] = data;                               
+                            }
                         }
+
                     }
 
-                    int nFrames = (int)Math.Ceiling(rate * (int)ImgDuration.Value);
+                    bmp.UnlockBits(BmpData);
 
-                    float IDT = 1.0f / (rate * (int)ImgDuration.Value);
+                    int nFrames = (int)Math.Ceiling(rate * ImageDuration);
+
+                    float IDT = 1.0f / (rate * ImageDuration);
 
                     float DH = 100;
 
@@ -613,7 +882,7 @@ namespace Mosaic
 
                         float x = seq.TargetPosition.X * fsmooth(t);
                         float z = seq.TargetPosition.Y * fsmooth(t);
-                        float y = DH * fsmooth(t);
+                        float y = DH * ( 1 - fsmooth(t));
 
                         float a = DH * asmooth(t);
                         float b = DH * bsmooth(t);
@@ -623,13 +892,144 @@ namespace Mosaic
                              Time = t,
                              Position = new OpenTK.Vector3(x, y, z),
                              Alpha = a,
-                             Blend = b
+                             Blend = 1
                         };
 
+                        Image img = Render(seq, f, data, w, h);
+
+                        data.Img = img;
+
+                        data.Tex = Texture.LoadTexture(img as Bitmap, true, false, true);
+
                         seq.Frames.Add(data);
+
+                        img.Save(Path.Combine(OutputFolder, String.Format("Export_{0}_{1}.jpg", s, t)));
                     }
 
                     _Animations.Add(seq);
+                }
+            }
+        }
+
+        private Image Render(AnimationSequency seq, int f, FrameData frame, int w, int h)
+        {
+            Renderer.MakeCurrent();
+
+            GL.ClearColor(Color.Gray);
+            GL.Enable(EnableCap.DepthTest);
+            GL.Hint(HintTarget.LineSmoothHint, HintMode.Nicest);
+            GL.BlendFunc(BlendingFactorSrc.SrcAlpha, BlendingFactorDest.OneMinusSrcAlpha);
+
+            GL.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit);
+
+            GL.PushAttrib(AttribMask.EnableBit);
+
+            GL.Disable(EnableCap.DepthTest);
+            GL.Enable(EnableCap.AlphaTest);
+            GL.Enable(EnableCap.Blend);
+            GL.Disable(EnableCap.DepthTest);
+
+            _Target.SetTarget();
+
+            GL.MatrixMode(MatrixMode.Projection);
+            GL.LoadIdentity();
+
+            float aspect = w / (float)(h);
+
+            GL.Frustum(0, w, 0, h, -1, 10000);
+
+            GL.Viewport(0, 0, w, h);
+
+            GL.MatrixMode(MatrixMode.Modelview);
+
+            GL.LoadIdentity();
+
+            GL.Enable(EnableCap.Texture2D);
+
+            //Matrix4 LookAt = Matrix4.LookAt(frame.Position.X, frame.Position.Y, frame.Position.Z, frame.Position.X, frame.Position.Y + 1.0f, frame.Position.Z, 0, 0, 1);
+            Matrix4 LookAt = Matrix4.LookAt(0, 0, -10, 0, 0, 0, 0, 1, 0);
+
+            GL.LoadMatrix(ref LookAt);
+
+            GL.ActiveTexture(TextureUnit.Texture0);
+            GL.Translate(-w / 2.0f, -h / 2.0f, 0);
+
+            GL.Disable(EnableCap.Texture2D);
+
+            for (int x = 0; x < w; x++)
+            {
+                for (int y = 0; y < h; y++)
+                {
+                    Color c = (seq.Primary.Img as Bitmap).GetPixel(x, y);
+
+                    ItemData IT = seq.ImageArray[x, y];
+
+                    /*if (IT.FileName != "NO_IMAGE")
+                    {
+                        IT.Img = Image.FromFile(IT.FileName);
+
+                        //IT.Frames = FillFrames(IT.FileName, IT.Cnt);
+                    }
+
+                    IT.Tex = Texture.LoadTexture(IT.Img as Bitmap, true, false, true);
+
+                    //  IT.color = Utils.GetColorMap(IT.Img as Bitmap); 
+
+                    if (IT.Cnt > 1)
+                    {
+                        IT.Tex.UpdateTexture(IT.Frames[CurrentFrame % IT.Cnt] as Bitmap, true, true);
+                    }
+
+                    IT.Tex.SetCurrent();*/
+
+                    GL.Color4(c.R * frame.Blend + (1.0 - frame.Blend), c.G * frame.Blend + (1.0 - frame.Blend), c.B * frame.Blend + (1.0 - frame.Blend), 1.0);
+
+                    GL.PushMatrix();
+
+                    GL.Translate(x, y * aspect, 0);
+
+                    GL.Begin(PrimitiveType.Quads);
+
+                    GL.TexCoord2(0, 0);
+                    GL.Vertex2(0, 0);
+
+                    GL.TexCoord2(1, 0);
+                    GL.Vertex2(1, 0);
+
+                    GL.TexCoord2(1, 1);
+                    GL.Vertex2(1, 1);
+
+                    GL.TexCoord2(0, 1);
+                    GL.Vertex2(0, 1);
+
+                    GL.End();
+
+                    GL.PopMatrix();
+
+                    //if (IT.FileName != "NO_IMAGE")
+                    //{
+                    //    IT.Img.Dispose();
+                    //    DisposeAll(IT.Frames);
+                    //}
+
+                    //IT.Tex.Dispose();
+                }
+            }
+
+            Renderer.SwapBuffers();
+
+            _Target.UnsetTarget();
+
+            return _Target.GetImage();
+        }
+
+        private void DisposeAll(Image[] image)
+        {
+            if (image != null)
+            {
+                foreach (Image img in image)
+                {
+                    img.Dispose();
                 }
             }
         }
@@ -666,6 +1066,20 @@ namespace Mosaic
                 {
                     DBSet.SelectedIndex = 0;
                 }
+            }
+        }
+
+        private void ListImage_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            if (ListImage.SelectedItems.Count > 0)
+            {
+                ItemData data = ListImage.SelectedItems[0].Tag as ItemData;
+
+                LastImage = data.Tex;
+            }
+            else
+            {
+                LastImage = null;
             }
         }
     }

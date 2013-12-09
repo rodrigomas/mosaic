@@ -59,5 +59,15 @@ namespace Mosaic.Properties {
                 resourceCulture = value;
             }
         }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Drawing.Bitmap.
+        /// </summary>
+        internal static System.Drawing.Bitmap NO_IMAGE {
+            get {
+                object obj = ResourceManager.GetObject("NO_IMAGE", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
     }
 }

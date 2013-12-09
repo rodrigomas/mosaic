@@ -129,5 +129,30 @@ namespace Mosaic
                     GL.DeleteRenderbuffers(1, ref uiRenderBuffer);
             }
         }
+
+        public System.Drawing.Image GetImage()
+        {
+            if (OpenTK.Graphics.GraphicsContext.CurrentContext == null)
+                throw new OpenTK.Graphics.GraphicsContextMissingException();
+
+            System.Drawing.Bitmap bmp = new System.Drawing.Bitmap(Width, Height);
+
+            System.Drawing.Imaging.BitmapData data = bmp.LockBits(new System.Drawing.Rectangle(0,0,Width,Height), 
+                    System.Drawing.Imaging.ImageLockMode.WriteOnly, System.Drawing.Imaging.PixelFormat.Format24bppRgb);
+
+            SetCurrentTexture();
+
+            GL.GetTexImage(OpenTK.Graphics.OpenGL.TextureTarget.Texture2D, 0, OpenTK.Graphics.OpenGL.PixelFormat.Bgr, OpenTK.Graphics.OpenGL.PixelType.UnsignedByte, data.Scan0);
+
+            //GL.ReadPixels(0, 0, this.ClientSize.Width, this.ClientSize.Height, PixelFormat.Bgr, PixelType.UnsignedByte, data.Scan0);
+
+            bmp.UnlockBits(data);
+
+            bmp.RotateFlip(System.Drawing.RotateFlipType.RotateNoneFlipY);
+
+            UnsetTarget();
+
+            return bmp;
+        }
     }
 }

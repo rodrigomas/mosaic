@@ -38,7 +38,7 @@ namespace Mosaic
         {
             id = 0;
 
-            String SQL = String.Format("SELECT l.lid FROM mosaic.library l WHERE l.LibraryName = '{0}'", dbName);
+            String SQL = String.Format(Info, "SELECT l.lid FROM mosaic.library l WHERE l.LibraryName = '{0}'", dbName);
 
             try
             {
@@ -68,7 +68,7 @@ namespace Mosaic
         {
             if(HasDB(dbName)) return true;
 
-            String SQL = String.Format("INSERT INTO mosaic.library (LibraryName, CreationDate) VALUES ('{0}', NOW())", dbName);
+            String SQL = String.Format(Info, "INSERT INTO mosaic.library (LibraryName, CreationDate) VALUES ('{0}', NOW())", dbName);
 
             try
             {
@@ -98,7 +98,7 @@ namespace Mosaic
         {
             id = 0;
 
-            String SQL = String.Format("SELECT i.iid, l.lid FROM mosaic.image i INNER JOIN mosaic.library l ON i.ImageLibrary = l.lid WHERE l.LibraryName = '{0}' AND i.ImageSHA = '{1}'", dbName, SHA1);
+            String SQL = String.Format(Info, "SELECT i.iid, l.lid FROM mosaic.image i INNER JOIN mosaic.library l ON i.ImageLibrary = l.lid WHERE l.LibraryName = '{0}' AND i.ImageSHA = '{1}'", dbName, SHA1);
 
             try
             {
@@ -113,6 +113,10 @@ namespace Mosaic
                         }
                         else
                         {
+                            dr.Close();
+
+                            HasDB(dbName, out id);
+
                             return false;
                         }
                     }
@@ -128,17 +132,20 @@ namespace Mosaic
         {
             int dbid = 0;
 
-            if (DBHasFile(dbName, SHA1, out dbid)) return true;
+            if (DBHasFile(SHA1, dbName, out dbid)) return true;
 
-            String SQL = String.Format("INSERT INTO `mosaic`.`image` (`ImageSHA`, `ImagePath`, `ImageR`, `ImageG`, `ImageB`, `ImageI`, " +
+            if (dbid == 0) return false;
+
+            String SQL = String.Format(Info, "INSERT INTO `mosaic`.`image` (`ImageSHA`, `ImagePath`, `ImageR`, `ImageG`, `ImageB`, `ImageI`, " +
                 "`Img`, `ImageCreation`, `ImageLibrary`, `ImageCR`, `ImageCG`, `ImageCB`, `ImageCnt`) " +
-                " VALUES ('{0}', '{1}', {2}, {3}, {4}, {5}, @imgblob, NOW(), {6}, {7}, {8}, {9}, {10})",
+                " VALUES ('{0}', @imgpath, {2}, {3}, {4}, {5}, @imgblob, NOW(), {6}, {7}, {8}, {9}, {10})",
                 SHA1, path, color.R / 255.0f, color.G / 255.0f, color.B / 255.0f, Utils.Luminance(color), dbid, center.R / 255.0f, center.G / 255.0f, center.B / 255.0f, cnt);
 
             try
             {
                 using (MySqlCommand cmd = new MySqlCommand(SQL, Conn))
                 {
+                    cmd.Parameters.AddWithValue("@imgpath", path);
                     cmd.Parameters.AddWithValue("@imgblob", img);
 
                     if (cmd.ExecuteNonQuery() > 0)
@@ -159,12 +166,16 @@ namespace Mosaic
 
         private SortedList<String, double> _Images = new SortedList<string, double>();
 
+        internal void ResetImages()
+        {
+            _Images.Clear();
+        }
 
         internal List<String> GetLibraries()
         {
             List<String> dic = new List<String>();
 
-            String SQL = String.Format("SELECT l.LibraryName FROM mosaic.library l ORDER BY l.LibraryName");
+            String SQL = String.Format(Info, "SELECT l.LibraryName FROM mosaic.library l ORDER BY l.LibraryName");
 
             try
             {
@@ -194,7 +205,7 @@ namespace Mosaic
             FileName = null;
             Cnt = 0;
 
-            if (HasDB(dbName, out dbid)) return null;
+            if (!HasDB(dbName, out dbid)) return null;
 
             double R = c.R / 255.0;
             double G = c.G / 255.0;
@@ -234,6 +245,7 @@ namespace Mosaic
                                 Cnt = (int)dr["ImageCnt"];
 
                                 _Images.Add(SHA, d);
+
                                 return Utils.ByteToImage(resp);
                             }
                             else continue;
