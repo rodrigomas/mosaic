@@ -15,8 +15,16 @@ namespace Mosaic
 
         public DBManager()
         {
-            Conn = new  MySqlConnection("server=localhost;user id=root;password=123456;database=mosaic");
-            Conn.Open();
+            Conn = new MySqlConnection("server=192.168.0.18;user id=root;password=123456;database=mosaic");
+
+            try
+            {
+                Conn.Open();
+            }
+            catch
+            {
+
+            }
         }
 
         public void Dispose()

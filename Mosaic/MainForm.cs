@@ -90,12 +90,26 @@ namespace Mosaic
 
         private RenderTarget _Target = null;
 
+        float H = 200;
+
+        float TempBlend = 0;
+
+        Texture TempTex = null;
+
+        private Effect BlendEffect = null;
+
         private void Renderer_Paint(object sender, PaintEventArgs e)
         {
-            int w = 640;
-            int h = 480;
+            //if (H < 0) H = 200;
 
             Renderer.MakeCurrent();
+            
+           /* int w = 640;
+            int h = 480;
+
+            H = (int)ImgDuration.Value;
+
+            TempBlend = Math.Max(0.0f, Math.Min(1.0f, H / 500.0f)); 
 
             GL.ClearColor(Color.Black);
             GL.Enable(EnableCap.DepthTest);
@@ -104,12 +118,11 @@ namespace Mosaic
 
             GL.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit);
 
-            GL.PointSize(10);
-          //  GL.PushAttrib(AttribMask.EnableBit);
+            GL.PushAttrib(AttribMask.EnableBit);
 
-            //GL.Disable(EnableCap.DepthTest);
-            //GL.Enable(EnableCap.AlphaTest);
-            //GL.Enable(EnableCap.Blend);
+            GL.Disable(EnableCap.DepthTest);
+            GL.Enable(EnableCap.AlphaTest);
+            GL.Enable(EnableCap.Blend);
             GL.Disable(EnableCap.DepthTest);
 
             GL.MatrixMode(MatrixMode.Projection);
@@ -120,11 +133,9 @@ namespace Mosaic
             Matrix4 Perspective = Matrix4.CreatePerspectiveFieldOfView((float)(Math.PI / 4), aspect, 1f, 1000.0f);
             GL.LoadMatrix(ref Perspective);
             
-            double pw = 2 * 1.0f * Math.Tan(Math.PI / 8);
+            //double pw = 2 * 1.0f * Math.Tan(Math.PI / 8);            
 
-            float H = 200;
-
-            float W = H / 1.0f * ((float)pw);
+            //float W = H / 1.0f * ((float)pw);
 
             //GL.Frustum(0, w, 0, h, -1, 10000);
             //GL.Ortho(0, w, 0, h, -1, 100);
@@ -138,22 +149,22 @@ namespace Mosaic
             GL.Enable(EnableCap.Texture2D);
 
             //Matrix4 LookAt = Matrix4.LookAt(frame.Position.X, frame.Position.Y, frame.Position.Z, frame.Position.X, frame.Position.Y + 1.0f, frame.Position.Z, 0, 0, 1);
-            Matrix4 LookAt = Matrix4.LookAt(0, 0, -H * 640 / W, 0, 0, 0, 0, 1, 0);
+            //Matrix4 LookAt = Matrix4.LookAt(0, 0, -H * 640 / W, 0, 0, 0, 0, 1, 0);
+            Matrix4 LookAt = Matrix4.LookAt(0, 0, -H, 0, 0, 0, 0, 1, 0);
 
             GL.LoadMatrix(ref LookAt);
 
             GL.ActiveTexture(TextureUnit.Texture0);            
 
-            GL.Disable(EnableCap.Texture2D);
-            GL.Color4(Color.Red);
-            GL.Begin(PrimitiveType.Points);
-            GL.Vertex3(0, 0, 0);
-            GL.End();
             //GL.Scale(W / 640, W * aspect / 480, 1);
             GL.Translate(-w / 2.0f, -h / 2.0f, 0);
            //
             if (_DisplayImages.Count != 0)
             {
+                BlendEffect.Begin();
+                BlendEffect.setValue("ImageMap", 0);
+                BlendEffect.setValue("BlendFactor", TempBlend);                
+
                 Bitmap bmp = (_DisplayImages[0].Img as Bitmap);                
 
                 BitmapData BmpData = bmp.LockBits(new Rectangle(0, 0, bmp.Width, bmp.Height), ImageLockMode.ReadOnly, bmp.PixelFormat);
@@ -168,8 +179,6 @@ namespace Mosaic
                             byte* cp = p + j * BmpData.Stride + 4 * i;
 
                             Color c = Color.FromArgb(cp[2], cp[1], cp[0]);
-
-                           // Color c = bmp.GetPixel(i, j);
 
                             //ItemData IT = seq.ImageArray[x, y];
 
@@ -189,21 +198,19 @@ namespace Mosaic
                                 IT.Tex.UpdateTexture(IT.Frames[CurrentFrame % IT.Cnt] as Bitmap, true, true);
                             }
 
-                            IT.Tex.SetCurrent();*/
+                            IT.Tex.SetCurrent();* /
+
+                            TempTex.SetCurrent();
 
                             GL.Color4(c);
 
                             GL.PushMatrix();
 
-                           // GL.Translate(i, j * aspect, 0);
-                            GL.Translate(i, j, 0);
-                            GL.Begin(PrimitiveType.Points);
+                            //GL.Translate(i, j, 0);                            
+                            GL.Translate(i, j * aspect, 0);
+                            GL.Scale(1, aspect, 1);
 
-                            GL.TexCoord2(0, 0);
-                            GL.Vertex2(0, 0);
-
-                            /*L.Begin(PrimitiveType.Quads);
-
+                            GL.Begin(BeginMode.Quads);
                             GL.TexCoord2(0, 0);
                             GL.Vertex2(0, 0);
 
@@ -215,7 +222,6 @@ namespace Mosaic
 
                             GL.TexCoord2(0, 1);
                             GL.Vertex2(0, 1);
-*/
                             GL.End();
 
                             GL.PopMatrix();
@@ -233,12 +239,14 @@ namespace Mosaic
                 }
 
                 bmp.UnlockBits(BmpData);
+
+                BlendEffect.End();
             }
 
             Renderer.SwapBuffers();
+            */
 
-
-            /*double cnt = (DateTime.Now - Start).TotalMilliseconds;
+            double cnt = (DateTime.Now - Start).TotalMilliseconds;
 
             double delta = (DateTime.Now - Delta).TotalMilliseconds;
 
@@ -290,7 +298,7 @@ namespace Mosaic
 
             GL.PushMatrix();
 
-            GL.Begin(PrimitiveType.Quads);
+            GL.Begin(BeginMode.Quads);
 
             GL.TexCoord2(0, 0);
             GL.Vertex2(0, 0);
@@ -309,7 +317,7 @@ namespace Mosaic
             GL.PopMatrix();
             GL.PopAttrib();
 
-            Renderer.SwapBuffers();*/
+            Renderer.SwapBuffers();
         }
 
         private void Clean()
@@ -328,6 +336,16 @@ namespace Mosaic
             Renderer.Context.LoadAll();
             GLContextLoaded = true;
             Renderer.MakeCurrent();
+
+            if (TempTex == null)
+            {
+                TempTex = Texture.LoadTexture(Properties.Resources.NO_IMAGE.GetThumbnailImage((int)renderWidth.Value, (int)renderHeight.Value, null, IntPtr.Zero) as Bitmap, true, true, true);
+            }
+
+            if (BlendEffect == null)
+            {
+                BlendEffect = Effect.FromFile("Colorize.glsl");
+            }
 
             _Target = new RenderTarget((int)renderWidth.Value, (int)renderHeight.Value, true);
         }
@@ -803,7 +821,7 @@ namespace Mosaic
                                     {
                                         FileName = "NO_IMAGE",
                                         CreatedTime = DateTime.UtcNow,
-                                        Img = Properties.Resources.NO_IMAGE,
+                                        Img = Properties.Resources.NO_IMAGE.GetThumbnailImage(w, h, null, IntPtr.Zero),
                                         Tex = null,
                                         Cnt = 1,
                                         Frames = null
@@ -831,7 +849,7 @@ namespace Mosaic
 
                                 ItemData data = null;
 
-                               // Image img = manager.GetImage(dbName, c, 0.15, out FileName, out cnt);
+                                manager.GetImage(dbName, c, 0.15, out FileName, out cnt);
 
                                 if (String.IsNullOrEmpty(FileName))
                                 {
@@ -874,15 +892,16 @@ namespace Mosaic
 
                     float IDT = 1.0f / (rate * ImageDuration);
 
-                    float DH = 100;
+                    float DH = 500;
 
-                    for (int f = 0; f < nFrames; f++)
+                    //for (int f = 0; f < nFrames; f++)
+                    int f = 0;
                     {
                         float t = f * IDT;
 
-                        float x = seq.TargetPosition.X * fsmooth(t);
-                        float z = seq.TargetPosition.Y * fsmooth(t);
-                        float y = DH * ( 1 - fsmooth(t));
+//                        float x = seq.TargetPosition.X * fsmooth(t);
+  //                      float z = DH * (1 - fsmooth(t));
+    //                    float y = seq.TargetPosition.Y * fsmooth(t);
 
                         float a = DH * asmooth(t);
                         float b = DH * bsmooth(t);
@@ -890,20 +909,67 @@ namespace Mosaic
                         FrameData data = new FrameData()
                         {
                              Time = t,
-                             Position = new OpenTK.Vector3(x, y, z),
+                             Position = new OpenTK.Vector3(0, 0, 0),
                              Alpha = a,
-                             Blend = 1
+                             Blend = 0
                         };
 
-                        Image img = Render(seq, f, data, w, h);
+                        //Image img = Render(seq, f, data, w, h);
 
-                        data.Img = img;
+                        //data.Img = img;
 
-                        data.Tex = Texture.LoadTexture(img as Bitmap, true, false, true);
+                        float aspect = w / (float)(h);
+
+                        int mw = w * w;
+                        int mh = h * h;
+
+                        int WW = 10000;
+
+                        int HH = (int)(WW / aspect);
+
+                        Bitmap img = new Bitmap(WW, HH);
+
+                        float scalex = WW / (float)mw;
+                        float scaley = HH / (float)mh;
+
+                        using (Graphics g = Graphics.FromImage(img))
+                        {
+                            //Parallel.For(0, w, (x) =>
+                            for (int x = 0; x < w; x++)
+                            {
+                                for (int y = 0; y < h; y++)
+                                {
+                                    Color c = (seq.Primary.Img as Bitmap).GetPixel(x, y);
+
+                                    ItemData IT = seq.ImageArray[x, y];
+
+                                    if (IT.FileName != "NO_IMAGE")
+                                    {
+                                        IT.Img = Image.FromFile(IT.FileName).GetThumbnailImage(w, h, null, IntPtr.Zero);
+
+                                        //IT.Frames = FillFrames(IT.FileName, IT.Cnt);
+                                    }
+
+                                    //lock (g)
+                                    {
+                                        g.DrawImage(IT.Img, new RectangleF(x * w * scalex, y * h * scaley, (w * scalex),(h * scaley)), new RectangleF(0, 0, w, h), GraphicsUnit.Pixel);
+
+//                                        g.FillRectangle(new SolidBrush(c), new RectangleF(x * w * scalex, y * h * scaley, (w * scalex), (h * scaley)));
+                                    }
+
+                                    if (IT.FileName != "NO_IMAGE")
+                                    {
+                                        IT.Img.Dispose();
+                                    }
+                                }
+                            }//);
+                        }
+
+                      //  data.Tex = Texture.LoadTexture(img as Bitmap, true, false, true);
 
                         seq.Frames.Add(data);
 
-                        img.Save(Path.Combine(OutputFolder, String.Format("Export_{0}_{1}.jpg", s, t)));
+                        img.Save(Path.Combine(OutputFolder, String.Format("Export_{0}_{1}.png", s, t)));
                     }
 
                     _Animations.Add(seq);
@@ -911,14 +977,21 @@ namespace Mosaic
             }
         }
 
+        private int THUMB_WIDTH = 512;
+        private int THUMB_HEIGHT = 512;
+
+        private Texture RenderTexture = null;
+
         private Image Render(AnimationSequency seq, int f, FrameData frame, int w, int h)
         {
             Renderer.MakeCurrent();
 
-            GL.ClearColor(Color.Gray);
+            _Target.SetTarget();
+
+            GL.ClearColor(Color.Black);
             GL.Enable(EnableCap.DepthTest);
             GL.Hint(HintTarget.LineSmoothHint, HintMode.Nicest);
-            GL.BlendFunc(BlendingFactorSrc.SrcAlpha, BlendingFactorDest.OneMinusSrcAlpha);
+            GL.BlendFunc(BlendingFactorSrc.SrcAlpha, BlendingFactorDest.OneMinusSrcAlpha);            
 
             GL.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit);
 
@@ -927,16 +1000,15 @@ namespace Mosaic
             GL.Disable(EnableCap.DepthTest);
             GL.Enable(EnableCap.AlphaTest);
             GL.Enable(EnableCap.Blend);
-            GL.Disable(EnableCap.DepthTest);
-
-            _Target.SetTarget();
+            GL.Disable(EnableCap.DepthTest);            
 
             GL.MatrixMode(MatrixMode.Projection);
             GL.LoadIdentity();
 
             float aspect = w / (float)(h);
 
-            GL.Frustum(0, w, 0, h, -1, 10000);
+            Matrix4 Perspective = Matrix4.CreatePerspectiveFieldOfView((float)(Math.PI / 4), aspect, 1f, 1000.0f);
+            GL.LoadMatrix(ref Perspective);
 
             GL.Viewport(0, 0, w, h);
 
@@ -947,14 +1019,17 @@ namespace Mosaic
             GL.Enable(EnableCap.Texture2D);
 
             //Matrix4 LookAt = Matrix4.LookAt(frame.Position.X, frame.Position.Y, frame.Position.Z, frame.Position.X, frame.Position.Y + 1.0f, frame.Position.Z, 0, 0, 1);
-            Matrix4 LookAt = Matrix4.LookAt(0, 0, -10, 0, 0, 0, 0, 1, 0);
+            Matrix4 LookAt = Matrix4.LookAt(0, frame.Position.Y, 0, 0, 0, 0, 0, 1, 0);
+            //Matrix4 LookAt = Matrix4.LookAt(0, 0, -10, 0, 0, 0, 0, 1, 0);
 
             GL.LoadMatrix(ref LookAt);
 
             GL.ActiveTexture(TextureUnit.Texture0);
             GL.Translate(-w / 2.0f, -h / 2.0f, 0);
 
-            GL.Disable(EnableCap.Texture2D);
+            BlendEffect.Begin();
+            BlendEffect.setValue("ImageMap", 0);
+            BlendEffect.setValue("BlendFactor", frame.Blend); 
 
             for (int x = 0; x < w; x++)
             {
@@ -964,31 +1039,44 @@ namespace Mosaic
 
                     ItemData IT = seq.ImageArray[x, y];
 
-                    /*if (IT.FileName != "NO_IMAGE")
+                    if (IT.FileName != "NO_IMAGE")
                     {
-                        IT.Img = Image.FromFile(IT.FileName);
+                        IT.Img = Image.FromFile(IT.FileName).GetThumbnailImage(w, h, null, IntPtr.Zero);
 
                         //IT.Frames = FillFrames(IT.FileName, IT.Cnt);
                     }
 
-                    IT.Tex = Texture.LoadTexture(IT.Img as Bitmap, true, false, true);
+                    if( RenderTexture == null )
+                    {
+                        RenderTexture = Texture.LoadTexture(IT.Img as Bitmap, false, false, true);
+                    } else 
+                    {
+                        RenderTexture.UpdateTexture(IT.Img as Bitmap, false, false);
+                    }
+
+                    //IT.Tex = Texture.LoadTexture(IT.Img as Bitmap, true, false, true);
 
                     //  IT.color = Utils.GetColorMap(IT.Img as Bitmap); 
 
-                    if (IT.Cnt > 1)
-                    {
-                        IT.Tex.UpdateTexture(IT.Frames[CurrentFrame % IT.Cnt] as Bitmap, true, true);
-                    }
+                    //if (IT.Cnt > 1)
+                    //{
+                    //    IT.Tex.UpdateTexture(IT.Frames[CurrentFrame % IT.Cnt] as Bitmap, true, true);
+                    //}
 
-                    IT.Tex.SetCurrent();*/
+                    //IT.Tex.SetCurrent();
 
-                    GL.Color4(c.R * frame.Blend + (1.0 - frame.Blend), c.G * frame.Blend + (1.0 - frame.Blend), c.B * frame.Blend + (1.0 - frame.Blend), 1.0);
+                    RenderTexture.SetCurrent();
+
+                    GL.Color4(c);
 
                     GL.PushMatrix();
 
+                    //GL.Translate(x, y * aspect, 0);
+                    //GL.Translate(x, y, 0);
                     GL.Translate(x, y * aspect, 0);
+                    GL.Scale(1, aspect, 1);
 
-                    GL.Begin(PrimitiveType.Quads);
+                    GL.Begin(BeginMode.Quads);
 
                     GL.TexCoord2(0, 0);
                     GL.Vertex2(0, 0);
@@ -1006,11 +1094,11 @@ namespace Mosaic
 
                     GL.PopMatrix();
 
-                    //if (IT.FileName != "NO_IMAGE")
-                    //{
-                    //    IT.Img.Dispose();
-                    //    DisposeAll(IT.Frames);
-                    //}
+                    if (IT.FileName != "NO_IMAGE")
+                    {
+                        IT.Img.Dispose();
+                        DisposeAll(IT.Frames);
+                    }
 
                     //IT.Tex.Dispose();
                 }
