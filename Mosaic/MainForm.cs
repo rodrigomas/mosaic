@@ -594,7 +594,8 @@ namespace Mosaic
 
                                         center = (bmp as Bitmap).GetPixel(bmp.Width / 2, bmp.Height / 2);
 
-                                        SaveInDB(file, SHA1, color, center, Utils.ImageToByte(bmp), dbName);
+                                        //SaveInDB(file, SHA1, color, center, Utils.ImageToByte(bmp), dbName);
+                                        SaveInDB(file, SHA1, color, center, null, dbName);
                                     }
 
                                     worked++;                                    
@@ -767,7 +768,7 @@ namespace Mosaic
                     // SELECT FILES
                     ItemData dt = _DisplayImages[s];
 
-                    Bitmap bmp = dt.Img as Bitmap;
+                    Bitmap bmp = (dt.Img as Bitmap).GetThumbnailImage(w, h, null, IntPtr.Zero) as Bitmap;
 
                     AnimationSequency seq = new AnimationSequency()
                     {
@@ -937,6 +938,8 @@ namespace Mosaic
                             //Parallel.For(0, w, (x) =>
                             for (int x = 0; x < w; x++)
                             {
+                                if (x % 10 == 0) GC.Collect();
+
                                 for (int y = 0; y < h; y++)
                                 {
                                     Color c = (seq.Primary.Img as Bitmap).GetPixel(x, y);
@@ -945,21 +948,18 @@ namespace Mosaic
 
                                     if (IT.FileName != "NO_IMAGE")
                                     {
-                                        IT.Img = Image.FromFile(IT.FileName).GetThumbnailImage(w, h, null, IntPtr.Zero);
-
-                                        //IT.Frames = FillFrames(IT.FileName, IT.Cnt);
+                                        using (Image ximg = Image.FromFile(IT.FileName))
+                                        {
+                                            using (IT.Img = ximg.GetThumbnailImage(w, h, null, IntPtr.Zero))
+                                            {
+                                                //IT.Frames = FillFrames(IT.FileName, IT.Cnt);                                  
+                                                g.DrawImage(IT.Img, new RectangleF(x * w * scalex, y * h * scaley, (w * scalex), (h * scaley)), new RectangleF(0, 0, w, h), GraphicsUnit.Pixel);
+                                            }
+                                        }
                                     }
-
-                                    //lock (g)
+                                    else
                                     {
-                                        g.DrawImage(IT.Img, new RectangleF(x * w * scalex, y * h * scaley, (w * scalex),(h * scaley)), new RectangleF(0, 0, w, h), GraphicsUnit.Pixel);
-
-//                                        g.FillRectangle(new SolidBrush(c), new RectangleF(x * w * scalex, y * h * scaley, (w * scalex), (h * scaley)));
-                                    }
-
-                                    if (IT.FileName != "NO_IMAGE")
-                                    {
-                                        IT.Img.Dispose();
+                                        g.FillRectangle(new SolidBrush(c), new RectangleF(x * w * scalex, y * h * scaley, (w * scalex), (h * scaley)));
                                     }
                                 }
                             }//);

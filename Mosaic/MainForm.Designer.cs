@@ -203,7 +203,7 @@
             0,
             0});
             this.renderHeight.Minimum = new decimal(new int[] {
-            480,
+            120,
             0,
             0,
             0});
@@ -243,7 +243,7 @@
             0,
             0});
             this.renderWidth.Minimum = new decimal(new int[] {
-            640,
+            160,
             0,
             0,
             0});
