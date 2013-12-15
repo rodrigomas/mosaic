@@ -39,6 +39,21 @@
     <ApplicationIcon>kiconedit.ico</ApplicationIcon>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="AForge">
+      <HintPath>..\..\..\Desktop\Release\AForge.dll</HintPath>
+    </Reference>
+    <Reference Include="AForge.Imaging">
+      <HintPath>..\..\..\Desktop\Release\AForge.Imaging.dll</HintPath>
+    </Reference>
+    <Reference Include="AForge.Imaging.Formats">
+      <HintPath>..\..\..\Desktop\Release\AForge.Imaging.Formats.dll</HintPath>
+    </Reference>
+    <Reference Include="AForge.Imaging.IPPrototyper">
+      <HintPath>..\..\..\Desktop\Release\AForge.Imaging.IPPrototyper.dll</HintPath>
+    </Reference>
+    <Reference Include="AForge.Math">
+      <HintPath>..\..\..\Desktop\Release\AForge.Math.dll</HintPath>
+    </Reference>
     <Reference Include="MySql.Data, Version=6.6.5.0, Culture=neutral, PublicKeyToken=c5687fc88969c44d, processorArchitecture=MSIL" />
     <Reference Include="OpenTK">
       <HintPath>C:\Users\alphau\Desktop\opentk\Binaries\OpenTK\Release\OpenTK.dll</HintPath>
@@ -59,9 +74,6 @@
     <Reference Include="System.Drawing" />
     <Reference Include="System.Windows.Forms" />
     <Reference Include="System.Xml" />
-    <Reference Include="WeifenLuo.WinFormsUI.Docking">
-      <HintPath>..\..\tagwire\packages\dockpanelsuite-master\WinFormsUI\bin\Release\WeifenLuo.WinFormsUI.Docking.dll</HintPath>
-    </Reference>
   </ItemGroup>
   <ItemGroup>
     <Compile Include="DBManager.cs" />

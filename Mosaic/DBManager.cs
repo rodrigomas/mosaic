@@ -16,7 +16,9 @@ namespace Mosaic
         //private MySqlConnection Conn = null;
 
 
-        static Dictionary<int, List<String>> Data = new Dictionary<int, List<string>>(); 
+        static Dictionary<int, List<String>> Data = new Dictionary<int, List<string>>();
+
+        static bool isOpen = false;
 
         public DBManager()
         {
@@ -31,7 +33,7 @@ namespace Mosaic
 
             }*/
 
-            if (File.Exists("database.db"))
+            if (File.Exists("database.db") && !isOpen)
             {
                 Data.Clear();
                 using (StreamReader sr = new StreamReader("database.db"))
@@ -48,10 +50,32 @@ namespace Mosaic
                         for (int i = 1; i < dts.Length; i++)
                         {
                             Data[key].Add(dts[i]);
+                            FileList.Add(dts[i]);
                         }
 
                         Line = sr.ReadLine();
                     }
+                }
+
+                isOpen = true;
+            }
+        }
+
+        static List<String> FileList = new List<string>();
+
+        public static void Save()
+        {
+            using (StreamWriter fs = new StreamWriter("database.db"))
+            {
+                foreach (var d in Data)
+                {
+                    fs.Write(d.Key);
+                    foreach (string s in d.Value)
+                    {
+                        fs.Write("&" + s);
+                    }
+
+                    fs.WriteLine();
                 }
             }
         }
@@ -62,21 +86,7 @@ namespace Mosaic
             {
                 Conn.Close();
             }*/
-
-
-            using (StreamWriter fs = new StreamWriter("database.db"))
-            {
-                foreach (var d in Data)
-                {
-                    fs.Write(d.Key);
-                    foreach (string s in d.Value)
-                    {
-                        fs.Write("&"+s);
-                    }
-
-                    fs.WriteLine();
-                }
-            }
+            
 
            // String ser = JsonConvert.SerializeObject(Data);
 
@@ -197,18 +207,22 @@ namespace Mosaic
             return true;
         }
 
-        internal bool InsertFile(string path, string SHA1, System.Drawing.Color color, Color center, int cnt, byte[] img, string dbName)
+        internal bool InsertFile(string path, string SHA1, System.Drawing.Color[] color, Color center, int cnt, byte[] img, string dbName)
         {
             ////////////
-            if (Data.ContainsKey(color.ToArgb()))
+
+            foreach (Color c in color)
             {
-                Data[color.ToArgb()].Add(path);
-            }
-            else
-            {
-                Data[color.ToArgb()] = new List<string>();
-                Data[color.ToArgb()].Add(path);
-            } 
+                if (Data.ContainsKey(c.ToArgb()))
+                {
+                    Data[c.ToArgb()].Add(path);
+                }
+                else
+                {
+                    Data[c.ToArgb()] = new List<string>();
+                    Data[c.ToArgb()].Add(path);
+                } 
+            }            
 
             return true;
 
@@ -287,6 +301,8 @@ namespace Mosaic
 
         Dictionary<int, List<String>> ListImage = new Dictionary<int, List<string>>();
 
+        List<String> RListImage = new List<string>();
+
         internal System.Drawing.Image GetImage(string dbName, System.Drawing.Color c, double dist, out string FileName, out int Cnt)
         {
             //int dbid = 0;
@@ -295,6 +311,103 @@ namespace Mosaic
             Cnt = 0;
 
             int color = c.ToArgb();
+
+           /*for (int i = 0; i < Data.Values.Count; i++)
+            {
+                var cd = Data.Values.ElementAt(i);
+
+                if( cd.Count == 0) continue;
+
+                FileName = cd[0];
+
+                foreach(String ff in cd)
+                {
+                    if (!RListImage.Contains(ff))
+                    {
+                        RListImage.Add(ff);
+                        FileName = ff;
+                        return null;
+                    }{
+                }                
+            }
+
+            return null;*/
+            
+            if (Data.ContainsKey(color))
+            {
+                FileName = Data[color][0];
+                Cnt = 1;
+                /*
+                if (!ListImage.ContainsKey(color))
+                {
+                    lock (ListImage)
+                    {
+                        if (!ListImage.ContainsKey(color))
+                            ListImage.Add(color, new List<String>());
+                    }
+
+                    ListImage[color].Add(FileName);
+
+                    return null;
+                }
+
+                for (int i = 0; i < Data[color].Count; i++)
+                {
+                    if (!ListImage[color].Contains(Data[color][i]))
+                    {
+                        ListImage[color].Add(Data[color][i]);
+
+                        FileName = Data[color][i];
+
+                        return null;
+                    }
+                }
+
+                return null;*/
+            }
+
+            for (int i = 0; i < Data.Keys.Count; i++)
+            {
+                Color colorr = Color.FromArgb(Data.Keys.ElementAt(i));
+
+                float dr = (c.R - colorr.R) / 255.0f;
+                float dg = (c.G - colorr.G) / 255.0f;
+                float db = (c.B - colorr.B) / 255.0f;
+
+                double d = Math.Sqrt(dr * dr + dg * dg + db * db);
+
+                if (d < dist)
+                {
+                    FileName = Data[colorr.ToArgb()][MainRandom.Next(0, Data[colorr.ToArgb()].Count)];
+                    Cnt = 1;
+
+                    if (!ListImage.ContainsKey(colorr.ToArgb()))
+                    {
+                        lock (ListImage)
+                        {
+                            if (!ListImage.ContainsKey(colorr.ToArgb()))
+                                ListImage.Add(colorr.ToArgb(), new List<String>());
+                        }
+                    }
+
+                    for (int j = 0; j < Data[colorr.ToArgb()].Count; j++)
+                    {
+                        if(!ListImage[colorr.ToArgb()].Contains(Data[colorr.ToArgb()][j]))
+                        {
+                            ListImage[colorr.ToArgb()].Add(Data[colorr.ToArgb()][j]);
+                            FileName = Data[colorr.ToArgb()][j];
+
+                            return null;
+                        }                        
+                    }
+
+                    return null;
+                }
+            }
+
+            return null;
+
+            /*
 
             int d = (int)Math.Max(10, (int)dist);
 
@@ -324,6 +437,9 @@ namespace Mosaic
 
                     if (!ListImage.ContainsKey(color))
                     {
+                        ListImage.Add(color, new List<String>());
+                        ListImage[color].Add(FileName);
+
                         return null;
                     }
 
@@ -351,7 +467,7 @@ namespace Mosaic
                 j++;
             }
 
-            return null;
+            return null;*/
 
             /*if (!HasDB(dbName, out dbid)) return null;
 
@@ -468,6 +584,24 @@ namespace Mosaic
                 default:
                     return Color.FromArgb(a, iMax, iMid, iMin);
             }
+        }
+
+        static Random MainRandom = new Random();
+
+        static int idx = 3;
+
+        internal void GetImageRND(string dbName, Color c, out string FileName, out int Cnt)
+        {
+            Random MainRandom2 = new Random(idx++ + (int)(DateTime.Now - new DateTime(2012, 1, 1)).TotalMilliseconds);
+
+            FileName = null;
+            Cnt = 0;
+
+            int j = MainRandom2.Next(0, FileList.Count);
+
+            FileName = FileList[j];
+
+            return;
         }
     }
 }

@@ -37,6 +37,7 @@
             this.splitter1 = new System.Windows.Forms.Splitter();
             this.panel3 = new System.Windows.Forms.Panel();
             this.groupBox2 = new System.Windows.Forms.GroupBox();
+            this.chkRandom = new System.Windows.Forms.CheckBox();
             this.renderHeight = new System.Windows.Forms.NumericUpDown();
             this.label6 = new System.Windows.Forms.Label();
             this.label3 = new System.Windows.Forms.Label();
@@ -118,7 +119,7 @@
             this.panel1.MaximumSize = new System.Drawing.Size(300, 0);
             this.panel1.MinimumSize = new System.Drawing.Size(153, 0);
             this.panel1.Name = "panel1";
-            this.panel1.Size = new System.Drawing.Size(196, 567);
+            this.panel1.Size = new System.Drawing.Size(196, 565);
             this.panel1.TabIndex = 3;
             // 
             // ListImage
@@ -130,7 +131,7 @@
             this.ListImage.Location = new System.Drawing.Point(0, 30);
             this.ListImage.MultiSelect = false;
             this.ListImage.Name = "ListImage";
-            this.ListImage.Size = new System.Drawing.Size(196, 114);
+            this.ListImage.Size = new System.Drawing.Size(196, 112);
             this.ListImage.SmallImageList = this.ImgList;
             this.ListImage.TabIndex = 22;
             this.ListImage.UseCompatibleStateImageBehavior = false;
@@ -151,7 +152,7 @@
             // splitter1
             // 
             this.splitter1.Dock = System.Windows.Forms.DockStyle.Bottom;
-            this.splitter1.Location = new System.Drawing.Point(0, 144);
+            this.splitter1.Location = new System.Drawing.Point(0, 142);
             this.splitter1.Name = "splitter1";
             this.splitter1.Size = new System.Drawing.Size(196, 3);
             this.splitter1.TabIndex = 21;
@@ -175,7 +176,7 @@
             this.panel3.Controls.Add(this.DownImage);
             this.panel3.Controls.Add(this.BuildAnimation);
             this.panel3.Dock = System.Windows.Forms.DockStyle.Bottom;
-            this.panel3.Location = new System.Drawing.Point(0, 147);
+            this.panel3.Location = new System.Drawing.Point(0, 145);
             this.panel3.MinimumSize = new System.Drawing.Size(0, 300);
             this.panel3.Name = "panel3";
             this.panel3.Size = new System.Drawing.Size(196, 420);
@@ -183,6 +184,7 @@
             // 
             // groupBox2
             // 
+            this.groupBox2.Controls.Add(this.chkRandom);
             this.groupBox2.Controls.Add(this.renderHeight);
             this.groupBox2.Controls.Add(this.label6);
             this.groupBox2.Controls.Add(this.label3);
@@ -193,6 +195,16 @@
             this.groupBox2.TabIndex = 23;
             this.groupBox2.TabStop = false;
             this.groupBox2.Text = "Render Size";
+            // 
+            // chkRandom
+            // 
+            this.chkRandom.AutoSize = true;
+            this.chkRandom.Location = new System.Drawing.Point(108, 54);
+            this.chkRandom.Name = "chkRandom";
+            this.chkRandom.Size = new System.Drawing.Size(66, 17);
+            this.chkRandom.TabIndex = 22;
+            this.chkRandom.Text = "Random";
+            this.chkRandom.UseVisualStyleBackColor = true;
             // 
             // renderHeight
             // 
@@ -355,7 +367,7 @@
             this.ImgDuration.Size = new System.Drawing.Size(180, 20);
             this.ImgDuration.TabIndex = 4;
             this.ImgDuration.Value = new decimal(new int[] {
-            20,
+            2,
             0,
             0,
             0});
@@ -449,7 +461,7 @@
             this.panel2.Controls.Add(this.trackBar1);
             this.panel2.Controls.Add(this.panel4);
             this.panel2.Dock = System.Windows.Forms.DockStyle.Bottom;
-            this.panel2.Location = new System.Drawing.Point(0, 564);
+            this.panel2.Location = new System.Drawing.Point(0, 562);
             this.panel2.Name = "panel2";
             this.panel2.Size = new System.Drawing.Size(606, 52);
             this.panel2.TabIndex = 5;
@@ -520,7 +532,7 @@
             this.Renderer.Dock = System.Windows.Forms.DockStyle.Fill;
             this.Renderer.Location = new System.Drawing.Point(0, 49);
             this.Renderer.Name = "Renderer";
-            this.Renderer.Size = new System.Drawing.Size(606, 515);
+            this.Renderer.Size = new System.Drawing.Size(606, 513);
             this.Renderer.TabIndex = 6;
             this.Renderer.VSync = false;
             this.Renderer.Load += new System.EventHandler(this.Renderer_Load);
@@ -528,7 +540,7 @@
             // 
             // MainStatus
             // 
-            this.MainStatus.Location = new System.Drawing.Point(0, 616);
+            this.MainStatus.Location = new System.Drawing.Point(0, 614);
             this.MainStatus.Name = "MainStatus";
             this.MainStatus.Size = new System.Drawing.Size(802, 22);
             this.MainStatus.TabIndex = 7;
@@ -730,7 +742,7 @@
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(802, 638);
+            this.ClientSize = new System.Drawing.Size(802, 636);
             this.Controls.Add(this.Renderer);
             this.Controls.Add(this.panel2);
             this.Controls.Add(this.panel1);
@@ -831,6 +843,7 @@
         private System.Windows.Forms.NumericUpDown renderWidth;
         private System.Windows.Forms.ImageList ImgList;
         private System.Windows.Forms.ColumnHeader Images;
+        private System.Windows.Forms.CheckBox chkRandom;
     }
 }
 

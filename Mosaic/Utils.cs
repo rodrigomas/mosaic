@@ -98,16 +98,49 @@ namespace Mosaic
 
         internal static System.Drawing.Color GetColorMap(System.Drawing.Bitmap bitmap)
         {
-            Image.GetThumbnailImageAbort myCallback = new Image.GetThumbnailImageAbort(ThumbnailCallback);
+            //Image.GetThumbnailImageAbort myCallback = new Image.GetThumbnailImageAbort(ThumbnailCallback);
 
-            Color c = Color.Black;
+//            Color c = Color.Black;
+            AForge.Imaging.ImageStatistics stat = new AForge.Imaging.ImageStatistics(bitmap);
 
-            using (Bitmap img = bitmap.GetThumbnailImage(1, 1, myCallback, IntPtr.Zero) as Bitmap)
+           /* using (Bitmap img = bitmap.GetThumbnailImage(1, 1, myCallback, IntPtr.Zero) as Bitmap)
             {
                 c = img.GetPixel(0, 0);
-            }
+            }*/
 
-            return c;
+            return Color.FromArgb((int)(stat.Red.Mean), (int)(stat.Green.Mean), (int)(stat.Blue.Mean));
+        }
+
+        internal static System.Drawing.Color [] GetColorMapArray(System.Drawing.Bitmap bitmap)
+        {
+            //Image.GetThumbnailImageAbort myCallback = new Image.GetThumbnailImageAbort(ThumbnailCallback);
+
+            List<Color> c = new List<Color>();
+
+            AForge.Imaging.ImageStatistics stat = new AForge.Imaging.ImageStatistics(bitmap);
+
+            /*
+
+            using (Bitmap img = bitmap.GetThumbnailImage(4, 4, myCallback, IntPtr.Zero) as Bitmap)
+            {
+                for (int i = 0; i < 4; i++)
+                {
+                    for (int j = 0; j < 4; j++)
+                    {
+                        Color cc = img.GetPixel(i, j);
+
+                        if (!c.Contains(cc))
+                        {
+                            c.Add(cc);
+                        }
+                    }
+                }                
+            }
+            */
+
+            c.Add(Color.FromArgb( (int)(stat.Red.Mean), (int)(stat.Green.Mean), (int)(stat.Blue.Mean)));
+
+            return c.ToArray();
         }
     }
 }

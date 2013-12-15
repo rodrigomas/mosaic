@@ -584,13 +584,13 @@ namespace Mosaic
                                         SHA1 = Utils.GetSHA1Hash(st);
                                     }
 
-                                    Color color;
+                                    Color[] color;
 
                                     Color center;
 
                                     using (Image bmp = Image.FromFile(file.FullName))
                                     {
-                                        color = Utils.GetColorMap(bmp as Bitmap);
+                                        color = Utils.GetColorMapArray(bmp as Bitmap);
 
                                         center = (bmp as Bitmap).GetPixel(bmp.Width / 2, bmp.Height / 2);
 
@@ -601,7 +601,9 @@ namespace Mosaic
                                     worked++;                                    
                                 }    
                                 
-                            }                                           
+                            }
+
+                            DBManager.Save();
                         };                    
 
                     worker.RunWorkerAsync();
@@ -678,7 +680,7 @@ namespace Mosaic
             return cnt;
         }
 
-        private void SaveInDB(FileInfo file, string SHA1, Color color, Color center, byte[] img, string dbName)
+        private void SaveInDB(FileInfo file, string SHA1, Color[] color, Color center, byte[] img, string dbName)
         {
             using (DBManager manager = new DBManager())
             {
@@ -741,6 +743,8 @@ namespace Mosaic
 
             return Files.Values.ToArray();
         }
+
+        String LastInput = "";
 
         private void BuildAnimation_Click(object sender, EventArgs e)
         {
@@ -812,6 +816,12 @@ namespace Mosaic
 
                     bmp.UnlockBits(BmpData);
 
+                    if (File.Exists("cache.tmp") && LastInput == seq.Primary.FileName)
+                    {
+                        seq.ImageArray = LoadSelection();
+                        LastInput = seq.Primary.FileName;
+                    }
+
                     PointF pos = CanPositions[Rnd.Next(CanPositions.Count)];
                     seq.TargetPosition = pos;
                     seq.ImageArray[(int)pos.X, (int)pos.Y] = _DisplayImages[s + 1];
@@ -828,39 +838,53 @@ namespace Mosaic
                                         Frames = null
                                     };
 
-                    unsafe
+                    bool random = chkRandom.Checked;
+
+                    if (!File.Exists("cache.tmp") || LastInput != seq.Primary.FileName)
                     {
-                        byte* p = (byte*)BmpData.Scan0.ToPointer();
-
-                        // Choosing Images
-                        for (int i = 0; i < bmp.Width; i++)
+                        unsafe
                         {
-                            for (int j = 0; j < bmp.Height; j++)
+                            int ww = bmp.Width;
+                            int hh = bmp.Height;
+
+                            byte* p = (byte*)BmpData.Scan0.ToPointer();
+
+                            // Choosing Images
+                            //for (int i = 0; i < bmp.Width; i++)
+                            Parallel.For(0, ww, (i) =>
                             {
-                                if (i == (int)pos.X && j == (int)pos.Y) continue;
-
-                                //Color c = bmp.GetPixel(i, j);
-                                byte* cp = p + j * BmpData.Stride + 3 * i;
-
-                                Color c = Color.FromArgb(cp[0], cp[1], cp[2]);
-
-                                String FileName = "";
-
-                                int cnt = 0;
-
-                                ItemData data = null;
-
-                                manager.GetImage(dbName, c, 0.15, out FileName, out cnt);
-
-                                if (String.IsNullOrEmpty(FileName))
+                                for (int j = 0; j < hh; j++)
                                 {
-                                    data = nullitem;
-                                }
-                                else
-                                {
-                                   // Bitmap idf = Image.FromFile(FileName) as Bitmap;
+                                    if (i == (int)pos.X && j == (int)pos.Y) continue;
 
-                                  //  Image LImage = (idf).GetThumbnailImage(w, h, null, IntPtr.Zero);
+                                    //Color c = bmp.GetPixel(i, j);
+                                    byte* cp = p + j * BmpData.Stride + 3 * i;
+
+                                    Color c = Color.FromArgb(cp[0], cp[1], cp[2]);
+
+                                    String FileName = "";
+
+                                    int cnt = 0;
+
+                                    ItemData data = null;
+
+                                    if (random)
+                                    {
+                                        manager.GetImageRND(dbName, c, out FileName, out cnt);
+                                    }
+                                    else
+                                    {
+                                        manager.GetImage(dbName, c, 0.25, out FileName, out cnt);
+
+                                        if (String.IsNullOrEmpty(FileName))
+                                        {
+                                            manager.GetImageRND(dbName, c, out FileName, out cnt);
+                                        }
+                                    }                                    
+
+                                    // Bitmap idf = Image.FromFile(FileName) as Bitmap;
+
+                                    //  Image LImage = (idf).GetThumbnailImage(w, h, null, IntPtr.Zero);
 
                                     data = new ItemData()
                                     {
@@ -872,109 +896,235 @@ namespace Mosaic
                                         Frames = null
                                     };
 
-                                  //  idf.Dispose();
+                                    //  idf.Dispose();
 
                                     //data.Frames = FillFrames(FileName, cnt);
-                                }                                
 
-                             //   data.Tex = Texture.LoadTexture(data.Img as Bitmap, true, false, true);
 
-                              //  data.color = Utils.GetColorMap(data.Img as Bitmap);                                
+                                    //   data.Tex = Texture.LoadTexture(data.Img as Bitmap, true, false, true);
 
-                                seq.ImageArray[i, j] = data;                               
-                            }
+                                    //  data.color = Utils.GetColorMap(data.Img as Bitmap);                                
+
+                                    seq.ImageArray[i, j] = data;
+                                }
+                            });
+
                         }
-
+                        bmp.UnlockBits(BmpData);
                     }
 
-                    bmp.UnlockBits(BmpData);
+                    SaveSelection(seq.ImageArray);
 
                     int nFrames = (int)Math.Ceiling(rate * ImageDuration);
 
-                    float IDT = 1.0f / (rate * ImageDuration);
+                    //float IDT = 1.0f / (rate * ImageDuration);
 
-                    float DH = 500;
+                    //float DH = 500;
+   
 
+                    RectangleF View = new RectangleF(0, 0, w, h);
+
+                    Parallel.For(0, nFrames, (f) =>
                     //for (int f = 0; f < nFrames; f++)
-                    int f = 0;
                     {
-                        float t = f * IDT;
+                        ///float t = f * IDT;
 
-//                        float x = seq.TargetPosition.X * fsmooth(t);
-  //                      float z = DH * (1 - fsmooth(t));
-    //                    float y = seq.TargetPosition.Y * fsmooth(t);
+                        //                        float x = seq.TargetPosition.X * fsmooth(t);
+                        //                      float z = DH * (1 - fsmooth(t));
+                        //                    float y = seq.TargetPosition.Y * fsmooth(t);
 
-                        float a = DH * asmooth(t);
-                        float b = DH * bsmooth(t);
+                        ///float a = DH * asmooth(t);
+                        //float b = DH * bsmooth(t);
 
-                        FrameData data = new FrameData()
+                        /*FrameData data = new FrameData()
                         {
                              Time = t,
                              Position = new OpenTK.Vector3(0, 0, 0),
                              Alpha = a,
                              Blend = 0
-                        };
+                        };*/
 
                         //Image img = Render(seq, f, data, w, h);
 
                         //data.Img = img;
 
+
+                        ColorMatrix matrix = new ColorMatrix();
+
+                        //create image attributes  
+                        ImageAttributes attributes = new ImageAttributes();   
+
+                        AForge.Imaging.Filters.HueModifier Filter = new AForge.Imaging.Filters.HueModifier();
+
+                        float a = f / (float)(nFrames);
+
                         float aspect = w / (float)(h);
 
-                        int mw = w * w;
-                        int mh = h * h;
+                        Bitmap img = new Bitmap(w, h);
 
-                        int WW = 10000;
+                        Bitmap prim = null;
 
-                        int HH = (int)(WW / aspect);
-
-                        Bitmap img = new Bitmap(WW, HH);
-
-                        float scalex = WW / (float)mw;
-                        float scaley = HH / (float)mh;
+                        using (Image ximg = Image.FromFile(seq.Primary.FileName))
+                        {
+                            prim = ximg.GetThumbnailImage(w, h, null, IntPtr.Zero) as Bitmap;
+                        }
 
                         using (Graphics g = Graphics.FromImage(img))
                         {
-                            //Parallel.For(0, w, (x) =>
-                            for (int x = 0; x < w; x++)
+                            if (f == 0)
                             {
-                                if (x % 10 == 0) GC.Collect();
-
-                                for (int y = 0; y < h; y++)
+                                g.DrawImage(prim, 0, 0, w, h);
+                            }
+                            else if (f == nFrames - 1)
+                            {
+                                using (Image ximg = Image.FromFile(seq.Target.FileName))
                                 {
-                                    Color c = (seq.Primary.Img as Bitmap).GetPixel(x, y);
-
-                                    ItemData IT = seq.ImageArray[x, y];
-
-                                    if (IT.FileName != "NO_IMAGE")
+                                    using (Image img2 = ximg.GetThumbnailImage(w, h, null, IntPtr.Zero))
                                     {
-                                        using (Image ximg = Image.FromFile(IT.FileName))
-                                        {
-                                            using (IT.Img = ximg.GetThumbnailImage(w, h, null, IntPtr.Zero))
-                                            {
-                                                //IT.Frames = FillFrames(IT.FileName, IT.Cnt);                                  
-                                                g.DrawImage(IT.Img, new RectangleF(x * w * scalex, y * h * scaley, (w * scalex), (h * scaley)), new RectangleF(0, 0, w, h), GraphicsUnit.Pixel);
-                                            }
-                                        }
-                                    }
-                                    else
-                                    {
-                                        g.FillRectangle(new SolidBrush(c), new RectangleF(x * w * scalex, y * h * scaley, (w * scalex), (h * scaley)));
+                                        g.DrawImage(img2, 0, 0, w, h);
                                     }
                                 }
-                            }//);
+
+                            }
+                            else
+                            {
+                                //Parallel.For(0, w, (x) =>
+                                for (int x = 0; x < w; x++)
+                                {
+                                    if (x % 10 == 0) GC.Collect();
+
+                                    for (int y = 0; y < h; y++)
+                                    {
+                                        float tx = pos.X * a * w - w / 2 * (1 - a);
+                                        float ty = pos.Y * a * h - h / 2 * (1 - a);
+
+                                        // DEFINE SCALE
+                                        float scalex = a;
+                                        float scaley = a;
+
+                                        // CULLING
+                                        if (!IsVisible(x, y, w, h, tx, ty, a, View))
+                                            continue;
+
+                                        Color c = prim.GetPixel(x, y);
+
+                                        ItemData IT = seq.ImageArray[x, y];
+
+                                        float X, Y;
+
+                                        X = x * scalex * w - tx;
+                                        Y = y * scaley * h - ty;
+
+                                        if (IT.FileName != "NO_IMAGE")
+                                        {
+                                            g.FillRectangle(new SolidBrush(c), new RectangleF(X, Y, (w * scalex), (h * scaley)));
+
+                                            using (Image bmp2x = Image.FromFile(IT.FileName))
+                                            {
+                                                using (IT.Img = bmp2x.GetThumbnailImage(w, h, null, IntPtr.Zero))
+                                                {
+                                                    //IT.Frames = FillFrames(IT.FileName, IT.Cnt);          
+                                                    Bitmap bmp2 = (bmp2x as Bitmap);
+
+                                                    if (f < (nFrames * 0.25f))
+                                                    {
+                                                        matrix.Matrix33 = f / (nFrames * 0.25f);
+                                                        attributes.SetColorMatrix(matrix, ColorMatrixFlag.Default, ColorAdjustType.Bitmap);
+
+                                                       /* Filter.Hue = (int)c.GetHue();
+
+                                                        if (f < (nFrames * 0.10f))
+                                                        {
+                                                            bmp2 = Filter.Apply(bmp2x as Bitmap);
+                                                            g.DrawImage(bmp2, new Rectangle((int)X, (int)Y, (int)(w * scalex), (int)(h * scaley)), 0, 0, w, h, GraphicsUnit.Pixel, attributes);
+                                                            bmp2.Dispose();
+                                                        }
+                                                        else*/
+                                                        {
+                                                            g.DrawImage(bmp2, new Rectangle((int)X, (int)Y, (int)(w * scalex), (int)(h * scaley)), 0, 0, w, h, GraphicsUnit.Pixel, attributes);
+                                                        }
+                                                    }
+                                                    else
+                                                    {
+                                                        g.DrawImage(bmp2x, new RectangleF(X, Y, (w * scalex), (h * scaley)), new RectangleF(0, 0, w, h), GraphicsUnit.Pixel);
+                                                    }
+                                                }
+                                            }
+                                        }
+                                        else
+                                        {
+                                            g.FillRectangle(new SolidBrush(c), new RectangleF(X, Y, (w * scalex), (h * scaley)));
+                                        }
+                                    }
+                                }//);
+                            }
                         }
 
-                      //  data.Tex = Texture.LoadTexture(img as Bitmap, true, false, true);
+                        //  data.Tex = Texture.LoadTexture(img as Bitmap, true, false, true);
 
-                        seq.Frames.Add(data);
+                        //seq.Frames.Add(data);
 
-                        img.Save(Path.Combine(OutputFolder, String.Format("Export_{0}_{1}.png", s, t)));
-                    }
+                        img.Save(Path.Combine(OutputFolder, String.Format("Export_{0}_{1}.png", s, f)));
+                    });
 
                     _Animations.Add(seq);
                 }
             }
+        }
+
+        private void SaveSelection(ItemData[,] itemData)
+        {
+            using (StreamWriter wr = new StreamWriter("cache.tmp"))
+            {
+                wr.WriteLine(itemData.GetLength(0).ToString() + "," + itemData.GetLength(1).ToString());
+
+                for (int i = 0; i < itemData.GetLength(0); i++)
+                {
+                    for (int j = 0; j < itemData.GetLength(1); j++)
+                    {
+                        wr.Write(itemData[i, j].FileName + ";");
+                    }
+
+                    wr.WriteLine();
+                }
+            }
+        }
+
+        private ItemData[,] LoadSelection()
+        {
+            ItemData[,] itemData = null;
+
+
+            using (StreamReader wr = new StreamReader("cache.tmp"))
+            {
+
+                String dt = wr.ReadLine();
+
+                String[] pts = dt.Split(',');
+                
+                itemData = new ItemData[int.Parse(pts[0]), int.Parse(pts[1])];
+
+                for (int i = 0; i < itemData.GetLength(0); i++)
+                {
+                    dt = wr.ReadLine();
+                    pts = dt.Split(';');
+
+                    for (int j = 0; j < itemData.GetLength(1); j++)
+                    {
+                        itemData[i, j] = new ItemData();
+                        itemData[i, j].FileName = pts[j];
+                    }
+                }
+            }
+
+            return itemData;
+        }        
+
+        private bool IsVisible(int x, int y, int w, int h, float tx, float ty, float a, RectangleF View)
+        {
+            RectangleF f0 = new RectangleF(x * w * a - tx, y * h * a - ty, (w * a), (h * a));
+
+            return View.IntersectsWith(f0);
         }
 
         private int THUMB_WIDTH = 512;
